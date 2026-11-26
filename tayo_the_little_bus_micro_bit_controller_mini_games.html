@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Tayo The Little Bus — Micro:bit Cockpit & Mini-Games</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bus-primary: #0284c7;
+      --bus-secondary: #38bdf8;
+      --bus-dark: #0369a1;
+      --bus-light: #e0f2fe;
+      --bus-accent: #facc15;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: linear-gradient(180deg, #38bdf8 0%, #7dd3fc 38%, #bae6fd 66%, #86efac 66.5%, #22c55e 84%, #334155 84.5%, #1e293b 100%);
+      color: #0f172a;
+    }
+
+    .font-tayo {
+      font-family: 'Baloo 2', cursive;
+    }
+
+    .font-mono-led {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Animasi Awan Bergerak di Langit */
+    @keyframes cloudDrift {
+      0% { transform: translateX(-180px); }
+      100% { transform: translateX(calc(100vw + 180px)); }
+    }
+    .cloud-1 { animation: cloudDrift 34s linear infinite; }
+    .cloud-2 { animation: cloudDrift 48s linear infinite; animation-delay: -16s; }
+    .cloud-3 { animation: cloudDrift 40s linear infinite; animation-delay: -28s; }
+
+    /* Marka Jalan Aspal Bergerak */
+    @keyframes roadStripe {
+      0% { background-position: 0 0; }
+      100% { background-position: -120px 0; }
+    }
+    .road-stripes {
+      background-image: repeating-linear-gradient(90deg, #f8fafc 0px, #f8fafc 60px, transparent 60px, transparent 120px);
+      animation: roadStripe 2.2s linear infinite;
+    }
+    .road-stripes.is-fast {
+      animation-duration: 0.45s;
+    }
+
+    /* Frame Utama Kokpit Bus Tayo */
+    .bus-cockpit-shell {
+      background: linear-gradient(180deg, var(--bus-primary) 0%, var(--bus-dark) 100%);
+      border: 4px solid #ffffff;
+      box-shadow:
+        0 24px 55px rgba(15, 23, 42, 0.38),
+        0 8px 0 var(--bus-dark),
+        inset 0 3px 0 rgba(255, 255, 255, 0.45);
+      transition: background 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    /* Kaca Depan Bus (Windshield Screen) */
+    .windshield-panel {
+      background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 65%, #dcfce7 100%);
+      border: 4px solid #0f172a;
+      box-shadow: inset 0 6px 18px rgba(14, 116, 144, 0.16), 0 6px 0 rgba(15, 23, 42, 0.25);
+    }
+
+    /* Dashboard Interior Gelap Modern */
+    .dashboard-deck {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 3px solid #334155;
+      box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Tombol Taktil 3D Empuk ala Kokpit Bus */
+    .tactile-btn {
+      position: relative;
+      transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.1s ease;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .btn-steer-pad {
+      background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+      border: 3px solid #e0f2fe;
+      box-shadow: 0 6px 0 #075985, 0 10px 16px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.65);
+    }
+    .btn-steer-pad:active, .btn-steer-pad.is-pressed {
+      transform: translateY(5px);
+      box-shadow: 0 1px 0 #075985, inset 0 2px 6px rgba(0, 0, 0, 0.45);
+      filter: brightness(1.15);
+      border-color: #fde047;
+    }
+
+    .btn-stop-brake {
+      background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+      border: 3px solid #ffe4e6;
+      box-shadow: 0 6px 0 #881337, 0 8px 16px rgba(225, 29, 72, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+    }
+    .btn-stop-brake:active, .btn-stop-brake.is-pressed {
+      transform: translateY(5px);
+      box-shadow: 0 1px 0 #881337, inset 0 2px 6px rgba(0, 0, 0, 0.5);
+      filter: brightness(1.15);
+    }
+
+    /* Dome Capit Merah (Tutup Capit) */
+    .dome-claw-grab {
+      background: radial-gradient(circle at 35% 26%, #fda4af 0%, #f43f5e 45%, #be123c 100%);
+      border: 4px solid #fff1f2;
+      box-shadow:
+        0 9px 0 #881337,
+        0 14px 24px rgba(225, 29, 72, 0.45),
+        inset 0 6px 10px rgba(255, 255, 255, 0.65);
+    }
+    .dome-claw-grab:active, .dome-claw-grab.is-pressed {
+      transform: translateY(8px);
+      box-shadow: 0 1px 0 #881337, inset 0 4px 8px rgba(0, 0, 0, 0.45);
+      filter: brightness(1.12);
+    }
+
+    /* Dome Lepas Kuning/Hijau Cerah (Buka Capit) */
+    .dome-claw-drop {
+      background: radial-gradient(circle at 35% 26%, #fef08a 0%, #facc15 50%, #ca8a04 100%);
+      border: 4px solid #fefce8;
+      box-shadow:
+        0 9px 0 #854d0e,
+        0 14px 24px rgba(234, 179, 8, 0.42),
+        inset 0 6px 10px rgba(255, 255, 255, 0.78);
+    }
+    .dome-claw-drop:active, .dome-claw-drop.is-pressed {
+      transform: translateY(8px);
+      box-shadow: 0 1px 0 #854d0e, inset 0 4px 8px rgba(0, 0, 0, 0.4);
+      filter: brightness(1.1);
+    }
+
+    .dome-gloss::after {
+      content: '';
+      position: absolute;
+      top: 9%;
+      left: 22%;
+      width: 56%;
+      height: 22%;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0) 100%);
+      pointer-events: none;
+    }
+
+    /* Animasi Bus Tayo Membal Ceria */
+    @keyframes busBounce {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    .bus-idle-bounce {
+      animation: busBounce 1.8s ease-in-out infinite;
+    }
+    .bus-driving-bounce {
+      animation: busBounce 0.35s ease-in-out infinite;
+    }
+
+    @keyframes wheelSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .wheel-spinning {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: wheelSpin 0.45s linear infinite;
+    }
+
+    /* Tab Mode Aktif */
+    .tab-pill-active {
+      background: #facc15;
+      color: #0f172a;
+      box-shadow: 0 3px 0 #a16207;
+    }
+  </style>
+</head>
+<body class="p-2.5 sm:p-4 md:p-6 flex flex-col items-center justify-center relative">
+
+  <!-- LATAR LANGIT KOTA TAYO (AWAN & JALAN RAYA) -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+    <!-- Matahari Ceria -->
+    <div class="absolute top-5 right-8 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-yellow-300 border-4 border-yellow-100 shadow-[0_0_40px_#fde047]"></div>
+
+    <!-- Awan Kartun Bergerak -->
+    <div class="cloud-1 absolute top-10 left-0 opacity-90">
+      <div class="w-28 h-9 bg-white rounded-full relative shadow-sm">
+        <div class="w-12 h-12 bg-white rounded-full absolute -top-5 left-4"></div>
+        <div class="w-10 h-10 bg-white rounded-full absolute -top-3 right-4"></div>
+      </div>
+    </div>
+    <div class="cloud-2 absolute top-24 left-0 opacity-80 scale-90">
+      <div class="w-32 h-10 bg-white rounded-full relative shadow-sm">
+        <div class="w-14 h-14 bg-white rounded-full absolute -top-6 left-5"></div>
+        <div class="w-11 h-11 bg-white rounded-full absolute -top-4 right-5"></div>
+      </div>
+    </div>
+    <div class="cloud-3 absolute top-6 left-0 opacity-75 scale-75">
+      <div class="w-24 h-8 bg-white rounded-full relative shadow-sm">
+        <div class="w-10 h-10 bg-white rounded-full absolute -top-4 left-4"></div>
+      </div>
+    </div>
+
+    <!-- Siluet Gedung Kota Seoul / Garasi Tayo -->
+    <svg class="absolute bottom-[15.5%] left-0 w-full h-36 sm:h-44 opacity-35" viewBox="0 0 1440 180" preserveAspectRatio="none">
+      <path fill="#0284c7" d="M0,180 L0,90 L70,90 L70,50 L150,50 L150,110 L230,110 L230,35 L320,35 L320,95 L410,95 L410,45 L500,45 L500,120 L610,120 L610,30 L710,30 L710,100 L820,100 L820,55 L930,55 L930,115 L1040,115 L1040,40 L1150,40 L1150,95 L1260,95 L1260,60 L1370,60 L1370,110 L1440,110 L1440,180 Z" />
+    </svg>
+
+    <!-- Marka Jalan Raya Bawah -->
+    <div id="bgRoadStripes" class="road-stripes absolute bottom-[6.5%] left-0 w-full h-2.5 opacity-85"></div>
+  </div>
+
+  <!-- BADAN UTAMA KOKPIT BUS TAYO -->
+  <div id="busCockpitShell" class="bus-cockpit-shell relative z-10 w-full max-w-5xl rounded-[2rem] p-3.5 sm:p-5 md:p-6">
+
+    <!-- 1. HEADER ATAS: LOGO TAYO, PEMILIH ARMADA BUS & MODE TABS -->
+    <header class="flex flex-col gap-3 mb-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <!-- Identitas Brand Tayo -->
+        <div class="flex items-center gap-2.5">
+          <div id="busBadgeNumber" class="font-tayo font-extrabold bg-yellow-400 text-slate-900 text-lg sm:text-2xl px-3 py-0.5 rounded-2xl border-2 border-slate-900 shadow-[0_3px_0_#0f172a]">
+            120
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-tayo font-extrabold text-white text-xl sm:text-3xl leading-none drop-shadow-[0_2px_0_rgba(15,23,42,0.55)]">
+                TAYO BUS COCKPIT
+              </h1>
+              <span class="hidden sm:inline-block px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold tracking-wider uppercase">
+                MICRO:BIT EDITION
+              </span>
+            </div>
+            <p id="busSubtitle" class="text-[11px] sm:text-xs font-semibold text-sky-100">
+              Hai! Aku Tayo si Bus Kecil yang ramah! Siap mengantar kargo!
+            </p>
+          </div>
+        </div>
+
+        <!-- Tombol Klakson TET-TOT & Mute SFX -->
+        <div class="flex items-center gap-2">
+          <button id="btnHorn" type="button"
+            class="tactile-btn px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-tayo font-extrabold text-xs sm:text-sm border-2 border-slate-900 shadow-[0_3px_0_#0f172a] flex items-center gap-1.5">
+            <span>📯</span>
+            <span>TET-TOT!</span>
+          </button>
+
+          <button id="btnMuteToggle" type="button" title="Suara Efek Bus"
+            class="px-2.5 py-1.5 rounded-full bg-slate-900/65 hover:bg-slate-900/85 border border-white/30 text-xs font-bold text-white transition">
+            🔊 SFX
+          </button>
+        </div>
+      </div>
+
+      <!-- Baris Pemilih Karakter Armada Tayo & Switcher Mode Kokpit / Mini-Games -->
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 bg-slate-950/35 p-2 rounded-2xl border border-white/20">
+        <!-- Switcher 4 Bus Sahabat Tayo -->
+        <div class="flex items-center justify-center sm:justify-start gap-1.5 flex-wrap">
+          <span class="text-[11px] font-bold text-white/90 mr-1 hidden sm:inline">ARMADA:</span>
+          <button type="button" data-bus="tayo" class="bus-select-btn px-2.5 py-1 rounded-xl text-xs font-extrabold bg-sky-500 text-white border-2 border-white shadow-sm transition">
+            🚌 Tayo 120
+          </button>
+          <button type="button" data-bus="rogi" class="bus-select-btn px-2.5 py-1 rounded-xl text-xs font-extrabold bg-emerald-600/80 hover:bg-emerald-500 text-white border border-white/40 transition">
+            🚌 Rogi 1000
+          </button>
+          <button type="button" data-bus="lani" class="bus-select-btn px-2.5 py-1 rounded-xl text-xs font-extrabold bg-amber-500/85 hover:bg-amber-400 text-slate-950 border border-white/40 transition">
+            🚌 Lani 02
+          </button>
+          <button type="button" data-bus="gani" class="bus-select-btn px-2.5 py-1 rounded-xl text-xs font-extrabold bg-rose-600/85 hover:bg-rose-500 text-white border border-white/40 transition">
+            🚌 Gani 1339
+          </button>
+        </div>
+
+        <!-- Switcher Mode: Kokpit Live vs 3 Mini-Games -->
+        <div class="grid grid-cols-4 gap-1 bg-slate-950/70 p-1 rounded-xl border border-white/15">
+          <button type="button" data-mode="cockpit" id="tab-cockpit"
+            class="mode-tab-btn tab-pill-active px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-extrabold transition text-center">
+            🚍 Kokpit
+          </button>
+          <button type="button" data-mode="game-claw" id="tab-game-claw"
+            class="mode-tab-btn px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-extrabold text-white/85 hover:text-white transition text-center">
+            🏗️ Capit Kargo
+          </button>
+          <button type="button" data-mode="game-race" id="tab-game-race"
+            class="mode-tab-btn px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-extrabold text-white/85 hover:text-white transition text-center">
+            🏁 City Rush
+          </button>
+          <button type="button" data-mode="game-simon" id="tab-game-simon"
+            class="mode-tab-btn px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-extrabold text-white/85 hover:text-white transition text-center">
+            🚦 Rambu Hana
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. WINDSHIELD VIEW (LAYAR KACA DEPAN INTERAKTIF: KOKPIT LIVE / 3 MINI-GAMES) -->
+    <section class="windshield-panel rounded-3xl p-3 sm:p-4 mb-4 relative overflow-hidden">
+
+      <!-- VIEW A: KOKPIT LIVE & VISUALIZER BUS TAYO -->
+      <div id="view-cockpit" class="flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Info Status Telemetri Kiri -->
+        <div class="w-full md:w-1/3 flex flex-col gap-2">
+          <div class="bg-white/90 rounded-2xl p-3 border-2 border-slate-900 shadow-[0_4px_0_#0f172a]">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">STATUS GERAK BUS</span>
+              <span id="cockpitActionBadge" class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-mono-led text-[11px] font-bold">
+                SIAGA (stop)
+              </span>
+            </div>
+            <div class="mt-2 flex items-baseline justify-between">
+              <div>
+                <span id="speedometerValue" class="font-tayo font-extrabold text-3xl sm:text-4xl text-slate-900">0</span>
+                <span class="text-xs font-bold text-slate-500">km/j</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] block font-bold text-slate-400">CAPIT KARGO</span>
+                <span id="windshieldClawStatus" class="text-xs font-extrabold text-amber-600">TERBUKA</span>
+              </div>
+            </div>
+            <!-- Bar Kecepatan Visual -->
+            <div class="w-full h-2.5 bg-slate-200 rounded-full mt-2 overflow-hidden border border-slate-300">
+              <div id="speedBarFill" class="h-full bg-gradient-to-r from-emerald-400 via-sky-500 to-amber-400 w-0 transition-all duration-150"></div>
+            </div>
+          </div>
+
+          <div class="bg-amber-100/95 rounded-2xl px-3 py-2 border-2 border-amber-500 text-xs font-bold text-amber-950 flex items-center gap-2">
+            <span class="text-base">💡</span>
+            <span>Pilih tab <strong>Capit Kargo</strong>, <strong>City Rush</strong>, atau <strong>Rambu Hana</strong> di atas untuk bermain!</span>
+          </div>
+        </div>
+
+        <!-- Karakter SVG Bus Tayo Interaktif di Tengah Kaca Depan -->
+        <div class="w-full md:w-2/3 flex flex-col items-center justify-center relative py-1">
+          <!-- Balon Bicara Ceria Tayo -->
+          <div id="tayoSpeechBubble" class="mb-1 px-3.5 py-1 rounded-full bg-white border-2 border-slate-900 text-xs sm:text-sm font-extrabold text-slate-900 shadow-[0_3px_0_#0f172a]">
+            "Ayo berangkat! Tekan MAJU atau pilih Mini-Game!"
+          </div>
+
+          <!-- SVG Karakter Bus Tayo / Rogi / Lani / Gani -->
+          <div id="busCharacterWrapper" class="bus-idle-bounce w-64 sm:w-80 transition-transform duration-200">
+            <svg id="tayoCharacterSvg" viewBox="0 0 360 195" class="w-full h-auto drop-shadow-[0_10px_14px_rgba(15,23,42,0.28)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Lengan Capit Mekanis di Atas Atap Bus -->
+              <g id="svgRoofClaw">
+                <rect x="162" y="8" width="36" height="14" rx="5" fill="#475569" stroke="#0f172a" stroke-width="3.5" />
+                <path id="svgClawLeftArm" d="M166 20 C146 24, 144 40, 158 43" stroke="#facc15" stroke-width="6" stroke-linecap="round" />
+                <path id="svgClawRightArm" d="M194 20 C214 24, 216 40, 202 43" stroke="#facc15" stroke-width="6" stroke-linecap="round" />
+              </g>
+
+              <!-- Bodi Utama Bus -->
+              <rect id="svgBusBody" x="34" y="24" width="292" height="126" rx="34" fill="#0284c7" stroke="#0f172a" stroke-width="5" />
+
+              <!-- Garis Putih & Kuning Khas Bus Kota -->
+              <path id="svgBusStripe" d="M36 96 L324 96 L324 118 L36 118 Z" fill="#ffffff" />
+              <path id="svgBusTrim" d="M36 116 L324 116 L324 125 L36 125 Z" fill="#facc15" />
+
+              <!-- Papan Tujuan LED di Atas Kaca Depan -->
+              <rect x="115" y="31" width="130" height="17" rx="8" fill="#0f172a" />
+              <text id="svgBusRouteText" x="180" y="43" text-anchor="middle" fill="#fde047" font-family="Baloo 2, sans-serif" font-weight="800" font-size="11">
+                120 • GARASI KOTA
+              </text>
+
+              <!-- Kaca Depan Besar (Tempat Mata Ceria Tayo) -->
+              <rect x="54" y="52" width="252" height="44" rx="16" fill="#e0f2fe" stroke="#0f172a" stroke-width="4" />
+              <!-- Kilau Kaca -->
+              <path d="M68 58 L95 58 L80 90 L58 90 Z" fill="#ffffff" opacity="0.55" />
+
+              <!-- Mata Kiri Ceria -->
+              <g id="svgEyeLeft">
+                <ellipse cx="136" cy="74" rx="19" ry="17" fill="#ffffff" stroke="#0f172a" stroke-width="3.5" />
+                <circle id="svgPupilLeft" cx="138" cy="74" r="9.5" fill="#0f172a" />
+                <circle cx="141" cy="70" r="3.5" fill="#ffffff" />
+              </g>
+
+              <!-- Mata Kanan Ceria -->
+              <g id="svgEyeRight">
+                <ellipse cx="224" cy="74" rx="19" ry="17" fill="#ffffff" stroke="#0f172a" stroke-width="3.5" />
+                <circle id="svgPupilRight" cx="222" cy="74" r="9.5" fill="#0f172a" />
+                <circle cx="225" cy="70" r="3.5" fill="#ffffff" />
+              </g>
+
+              <!-- Nomor Bus di Hidung Depan -->
+              <rect x="155" y="99" width="50" height="22" rx="8" fill="#0f172a" />
+              <text id="svgBusFrontNumber" x="180" y="115" text-anchor="middle" fill="#ffffff" font-family="Baloo 2, sans-serif" font-weight="800" font-size="15">
+                120
+              </text>
+
+              <!-- Mulut Senyum Ramah -->
+              <path id="svgBusMouth" d="M156 130 Q180 144 204 130" stroke="#0f172a" stroke-width="4.5" stroke-linecap="round" fill="none" />
+
+              <!-- Lampu Depan Kiri & Kanan -->
+              <circle id="svgHeadlightLeft" cx="68" cy="128" r="12" fill="#fef08a" stroke="#0f172a" stroke-width="3.5" />
+              <circle id="svgHeadlightRight" cx="292" cy="128" r="12" fill="#fef08a" stroke="#0f172a" stroke-width="3.5" />
+
+              <!-- Spion Samping -->
+              <rect x="18" y="64" width="14" height="24" rx="6" fill="#0f172a" />
+              <rect x="328" y="64" width="14" height="24" rx="6" fill="#0f172a" />
+
+              <!-- Roda Kiri & Kanan -->
+              <g id="svgWheelLeft">
+                <circle cx="96" cy="154" r="24" fill="#1e293b" stroke="#0f172a" stroke-width="4" />
+                <circle cx="96" cy="154" r="11" fill="#cbd5e1" stroke="#0f172a" stroke-width="3" />
+                <line x1="96" y1="143" x2="96" y2="165" stroke="#0f172a" stroke-width="2.5" />
+                <line x1="85" y1="154" x2="107" y2="154" stroke="#0f172a" stroke-width="2.5" />
+              </g>
+              <g id="svgWheelRight">
+                <circle cx="264" cy="154" r="24" fill="#1e293b" stroke="#0f172a" stroke-width="4" />
+                <circle cx="264" cy="154" r="11" fill="#cbd5e1" stroke="#0f172a" stroke-width="3" />
+                <line x1="264" y1="143" x2="264" y2="165" stroke="#0f172a" stroke-width="2.5" />
+                <line x1="253" y1="154" x2="275" y2="154" stroke="#0f172a" stroke-width="2.5" />
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW B: MINI-GAME 1 — TAYO CARGO CLAW (MESIN CAPIT PAKET KOTA) -->
+      <div id="view-game-claw" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-extrabold uppercase">MINI-GAME 1</span>
+            <h3 class="font-tayo font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">
+              🏗️ Tayo Cargo Claw — Capit &amp; Antar Paket!
+            </h3>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-extrabold">
+            <span class="px-2.5 py-1 rounded-xl bg-white border-2 border-slate-900 text-slate-900">
+              SKOR: <span id="clawScore" class="text-sky-600">0</span>
+            </span>
+            <span class="px-2.5 py-1 rounded-xl bg-white border-2 border-slate-900 text-slate-900">
+              WAKTU: <span id="clawTimer" class="text-rose-600">60</span>d
+            </span>
+            <button id="btnResetClawGame" type="button" class="px-2.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white border-2 border-slate-900 shadow-[0_2px_0_#0f172a]">
+              🔄 Ulang
+            </button>
+          </div>
+        </div>
+
+        <div class="relative w-full h-56 sm:h-64 rounded-2xl overflow-hidden border-3 border-slate-900 bg-sky-100">
+          <canvas id="canvasClawGame" class="w-full h-full block"></canvas>
+          <div id="clawGameOverlay" class="hidden absolute inset-0 bg-slate-950/75 flex flex-col items-center justify-center text-white p-4 text-center">
+            <p class="font-tayo font-extrabold text-2xl sm:text-3xl text-yellow-300">WAKTU HABIS!</p>
+            <p class="text-sm mt-1">Total Kargo Terkumpul: <strong id="clawFinalScore" class="text-emerald-300">0</strong> poin</p>
+            <button id="btnPlayAgainClaw" type="button" class="mt-3 px-4 py-2 rounded-xl bg-yellow-400 text-slate-950 font-extrabold text-sm border-2 border-slate-900">
+              Main Lagi!
+            </button>
+          </div>
+        </div>
+        <p class="mt-1.5 text-[11px] sm:text-xs font-bold text-slate-700 text-center">
+          Gunakan <span class="text-sky-700">KIRI / KANAN (A/D)</span> geser crane • Tekan <span class="text-rose-600">CAPIT (E)</span> tangkap paket • Tekan <span class="text-amber-700">LEPAS (R)</span> di Zona Truk!
+        </p>
+      </div>
+
+      <!-- VIEW C: MINI-GAME 2 — TAYO CITY RUSH (BALAP 3 JALUR & HINDARI RINTANGAN) -->
+      <div id="view-game-race" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <span class="px-2 py-0.5 rounded-full bg-sky-600 text-white text-[10px] font-extrabold uppercase">MINI-GAME 2</span>
+            <h3 class="font-tayo font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">
+              🏁 Tayo City Rush — Balap Jalan Raya Seoul!
+            </h3>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-extrabold">
+            <span class="px-2.5 py-1 rounded-xl bg-white border-2 border-slate-900 text-slate-900">
+              SKOR: <span id="raceScore" class="text-sky-600">0</span>
+            </span>
+            <span class="px-2.5 py-1 rounded-xl bg-white border-2 border-slate-900 text-slate-900">
+              NYAWA: <span id="raceLives" class="text-rose-600">❤️❤️❤️</span>
+            </span>
+            <button id="btnResetRaceGame" type="button" class="px-2.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white border-2 border-slate-900 shadow-[0_2px_0_#0f172a]">
+              🔄 Ulang
+            </button>
+          </div>
+        </div>
+
+        <div class="relative w-full h-56 sm:h-64 rounded-2xl overflow-hidden border-3 border-slate-900 bg-slate-800">
+          <canvas id="canvasRaceGame" class="w-full h-full block"></canvas>
+          <div id="raceGameOverlay" class="hidden absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center text-white p-4 text-center">
+            <p class="font-tayo font-extrabold text-2xl sm:text-3xl text-rose-400">UPS! MENABRAK KERUCUT!</p>
+            <p class="text-sm mt-1">Skor Perjalanan: <strong id="raceFinalScore" class="text-yellow-300">0</strong></p>
+            <button id="btnPlayAgainRace" type="button" class="mt-3 px-4 py-2 rounded-xl bg-yellow-400 text-slate-950 font-extrabold text-sm border-2 border-slate-900">
+              Balap Lagi!
+            </button>
+          </div>
+        </div>
+        <p class="mt-1.5 text-[11px] sm:text-xs font-bold text-slate-700 text-center">
+          Tekan <span class="text-sky-700">KIRI / KANAN (A/D)</span> pindah jalur • Tahan <span class="text-emerald-700">MAJU (W)</span> untuk Turbo Boost • Ambil ⭐ Koin &amp; Hindari 🚧 Kerucut!
+        </p>
+      </div>
+
+      <!-- VIEW D: MINI-GAME 3 — RAMBU LALU LINTAS HANA (SIMON MEMORY CHALLENGE) -->
+      <div id="view-game-simon" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase">MINI-GAME 3</span>
+            <h3 class="font-tayo font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">
+              🚦 Tantangan Rambu Mekanik Hana!
+            </h3>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-extrabold">
+            <span class="px-2.5 py-1 rounded-xl bg-white border-2 border-slate-900 text-slate-900">
+              LEVEL: <span id="simonLevel" class="text-emerald-600">1</span>
+            </span>
+            <button id="btnStartSimon" type="button" class="px-3 py-1 rounded-xl bg-sky-600 hover:bg-sky-500 text-white border-2 border-slate-900 shadow-[0_2px_0_#0f172a]">
+              ▶️ Mulai Urutan
+            </button>
+          </div>
+        </div>
+
+        <div class="w-full h-56 sm:h-64 rounded-2xl border-3 border-slate-900 bg-gradient-to-b from-slate-900 to-slate-800 p-4 flex flex-col items-center justify-between text-white">
+          <div id="simonPromptText" class="text-center text-xs sm:text-sm font-bold text-amber-300 bg-white/10 px-4 py-1.5 rounded-full">
+            Klik "Mulai Urutan" lalu ikuti sinyal tombol D-Pad / Capit di bawah!
+          </div>
+
+          <!-- Lampu Sinyal Besar -->
+          <div id="simonSignalDisplay" class="flex items-center justify-center gap-3 sm:gap-4 my-auto flex-wrap">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-slate-700 border-4 border-slate-500 flex flex-col items-center justify-center shadow-inner">
+              <span class="text-3xl">👩‍🔧</span>
+              <span class="text-[11px] font-extrabold text-slate-300 mt-1">SIAP!</span>
+            </div>
+          </div>
+
+          <!-- Progress Langkah Pemain -->
+          <div id="simonProgressDots" class="flex items-center justify-center gap-2 min-h-[20px]"></div>
+        </div>
+        <p class="mt-1.5 text-[11px] sm:text-xs font-bold text-slate-700 text-center">
+          Ulangi urutan perintah (<span class="text-sky-700">MAJU, KIRI, KANAN, MUNDUR, CAPIT, LEPAS</span>) memakai tombol di bawah atau keyboard!
+        </p>
+      </div>
+    </section>
+
+    <!-- 3. DASHBOARD KONTROLER UTAMA (SETIR D-PAD & TUAS CAPIT KARGO) -->
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-4">
+
+      <!-- PANEL KIRI: KEMUDI BUS TAYO (D-PAD TAKTIL) -->
+      <section class="dashboard-deck rounded-3xl p-4 sm:p-5 flex flex-col justify-between text-white">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-sky-400">KEMUDI &amp; PEDAL</span>
+            <h2 class="font-tayo font-extrabold text-xl sm:text-2xl text-white leading-none">SETIR BUS TAYO</h2>
+          </div>
+          <span class="px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-600 font-mono-led text-[11px] text-amber-300">
+            W A S D / ↑ ← ↓ →
+          </span>
+        </div>
+
+        <!-- Grid D-Pad Kemudi -->
+        <div class="flex items-center justify-center py-1 my-auto">
+          <div class="grid grid-cols-3 gap-2.5 w-full max-w-[275px] aspect-square">
+            <div></div>
+
+            <!-- MAJU -> up -->
+            <button type="button" data-cmd="up" id="btn-up"
+              class="tactile-btn btn-steer-pad rounded-2xl flex flex-col items-center justify-center text-white p-1">
+              <span class="text-[10px] font-mono-led text-yellow-200 font-bold">W / ↑</span>
+              <svg class="w-6 h-6 my-0.5" fill="none" stroke="currentColor" stroke-width="3.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+              </svg>
+              <span class="text-xs sm:text-sm font-extrabold leading-none">MAJU</span>
+              <span class="text-[10px] font-mono-led text-sky-100 mt-0.5">up</span>
+            </button>
+
+            <div></div>
+
+            <!-- KIRI -> left -->
+            <button type="button" data-cmd="left" id="btn-left"
+              class="tactile-btn btn-steer-pad rounded-2xl flex flex-col items-center justify-center text-white p-1">
+              <span class="text-[10px] font-mono-led text-yellow-200 font-bold">A / ←</span>
+              <svg class="w-6 h-6 my-0.5" fill="none" stroke="currentColor" stroke-width="3.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span class="text-xs sm:text-sm font-extrabold leading-none">KIRI</span>
+              <span class="text-[10px] font-mono-led text-sky-100 mt-0.5">left</span>
+            </button>
+
+            <!-- REM / STOP -> stop -->
+            <button type="button" data-cmd="stop" id="btn-stop"
+              class="tactile-btn btn-stop-brake rounded-full flex flex-col items-center justify-center text-white p-1">
+              <span class="text-[9px] font-mono-led text-yellow-200 font-bold">SPACE</span>
+              <span class="text-xs sm:text-sm font-black leading-tight mt-0.5">REM</span>
+              <span class="text-[10px] font-mono-led text-rose-100">stop</span>
+            </button>
+
+            <!-- KANAN -> right -->
+            <button type="button" data-cmd="right" id="btn-right"
+              class="tactile-btn btn-steer-pad rounded-2xl flex flex-col items-center justify-center text-white p-1">
+              <span class="text-[10px] font-mono-led text-yellow-200 font-bold">D / →</span>
+              <svg class="w-6 h-6 my-0.5" fill="none" stroke="currentColor" stroke-width="3.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              <span class="text-xs sm:text-sm font-extrabold leading-none">KANAN</span>
+              <span class="text-[10px] font-mono-led text-sky-100 mt-0.5">right</span>
+            </button>
+
+            <div></div>
+
+            <!-- MUNDUR -> down -->
+            <button type="button" data-cmd="down" id="btn-down"
+              class="tactile-btn btn-steer-pad rounded-2xl flex flex-col items-center justify-center text-white p-1">
+              <span class="text-[10px] font-mono-led text-yellow-200 font-bold">S / ↓</span>
+              <svg class="w-6 h-6 my-0.5" fill="none" stroke="currentColor" stroke-width="3.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+              <span class="text-xs sm:text-sm font-extrabold leading-none">MUNDUR</span>
+              <span class="text-[10px] font-mono-led text-sky-100 mt-0.5">down</span>
+            </button>
+
+            <div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANEL KANAN: KONTROL CAPIT KARGO TAYO -->
+      <section class="dashboard-deck rounded-3xl p-4 sm:p-5 flex flex-col justify-between text-white">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">PERALATAN KARGO</span>
+            <h2 class="font-tayo font-extrabold text-xl sm:text-2xl text-white leading-none">CAPIT KARGO BUS</h2>
+          </div>
+          <span id="clawStateBadge"
+            class="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 text-xs font-extrabold tracking-wide">
+            CAPIT: TERBUKA
+          </span>
+        </div>
+
+        <!-- Dua Tombol Dome Besar -->
+        <div class="flex flex-col items-center justify-center my-auto py-3">
+          <div class="grid grid-cols-2 gap-5 sm:gap-7 w-full place-items-center">
+            <!-- TUTUP CAPIT -> capit (Key: E) -->
+            <div class="flex flex-col items-center">
+              <button type="button" data-action="capit" id="btn-capit"
+                class="tactile-btn dome-claw-grab dome-gloss w-28 h-28 sm:w-34 sm:h-34 md:w-36 md:h-36 rounded-full flex flex-col items-center justify-center text-white p-2">
+                <span class="px-2 py-0.5 rounded bg-black/55 text-rose-200 font-mono-led text-[11px] mb-1">KEY: E</span>
+                <span class="font-tayo font-extrabold text-2xl sm:text-3xl leading-none drop-shadow-[0_2px_0_#000]">CAPIT</span>
+                <span class="mt-1 px-2.5 py-0.5 rounded-full bg-black/45 font-mono-led text-[11px] text-rose-100">capit</span>
+              </button>
+              <span class="mt-3 text-xs font-extrabold tracking-wide text-rose-300">TUTUP CAPIT</span>
+            </div>
+
+            <!-- BUKA CAPIT -> lepas (Key: R) -->
+            <div class="flex flex-col items-center">
+              <button type="button" data-action="lepas" id="btn-lepas"
+                class="tactile-btn dome-claw-drop dome-gloss w-28 h-28 sm:w-34 sm:h-34 md:w-36 md:h-36 rounded-full flex flex-col items-center justify-center text-slate-950 p-2">
+                <span class="px-2 py-0.5 rounded bg-slate-950 text-yellow-300 font-mono-led text-[11px] mb-1">KEY: R</span>
+                <span class="font-tayo font-extrabold text-2xl sm:text-3xl leading-none text-slate-950">LEPAS</span>
+                <span class="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 font-mono-led text-[11px] text-yellow-300">lepas</span>
+              </button>
+              <span class="mt-3 text-xs font-extrabold tracking-wide text-amber-300">BUKA CAPIT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar Sinyal Terakhir -->
+        <div class="mt-2 pt-2.5 border-t border-slate-700 flex items-center justify-between text-xs text-slate-300">
+          <span>Perintah Aktif:</span>
+          <span id="lastCmdPill" class="font-mono-led font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg">
+            stop
+          </span>
+        </div>
+      </section>
+    </main>
+
+    <!-- 4. FOOTER KONEKSI BLUETOOTH BBC MICRO:BIT -->
+    <footer class="rounded-2xl bg-slate-950/90 border-2 border-white/25 p-3.5 text-white shadow-lg">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+        <!-- Status BLE & TX Monitor -->
+        <div class="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700">
+            <span id="bleDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span id="bleStatusLabel" class="text-xs sm:text-sm font-bold text-amber-300">
+              Mode Simulasi (Belum Terhubung)
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 font-mono-led text-xs">
+            <span class="text-slate-400">UART TX:</span>
+            <span id="txMonitorText" class="text-sky-300 font-bold">stop\n</span>
+          </div>
+        </div>
+
+        <!-- Tombol MakeCode Hint & Connect Micro:bit -->
+        <div class="flex flex-wrap items-center justify-center gap-2.5 w-full md:w-auto">
+          <button id="btnToggleHint" type="button"
+            class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-extrabold text-slate-100 transition">
+            🧩 MakeCode Hint
+          </button>
+
+          <button id="btnConnectBle" type="button"
+            class="tactile-btn flex-1 md:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-2 border-emerald-200 shadow-[0_4px_0_#065f46] text-white font-extrabold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" />
+            </svg>
+            <span id="btnConnectText">CONNECT MICRO:BIT</span>
+          </button>
+        </div>
+      </div>
+
+      <p id="bleHelperMsg" class="mt-2 text-[11px] text-center md:text-left text-slate-300">
+        Klik <strong class="text-emerald-300">CONNECT MICRO:BIT</strong> untuk menghubungkan bus via Web Bluetooth UART, atau mainkan 3 mini-games Tayo secara langsung!
+      </p>
+
+      <!-- Laci MakeCode Hint -->
+      <div id="makecodeDrawer" class="hidden mt-3 pt-3 border-t border-slate-700 text-xs text-slate-200">
+        <div class="bg-slate-900 border border-sky-500/40 rounded-xl p-3 font-mono-led text-[11px] leading-relaxed">
+          <div class="text-sky-300 font-bold mb-1">// Blok MakeCode BBC micro:bit (Bluetooth UART):</div>
+          <div>1. Tambahkan ekstensi <span class="text-yellow-300">bluetooth</span> (hapus radio jika bentrok).</div>
+          <div>2. <span class="text-emerald-400">on bluetooth connected</span> → tampilkan ikon centang.</div>
+          <div>3. <span class="text-emerald-400">bluetooth on data received (new line)</span> → simpan ke variabel <span class="text-amber-300">cmd</span>:</div>
+          <div class="pl-3 text-slate-200">
+            • <span class="text-sky-300">"up"</span> = maju &nbsp;|&nbsp;
+            <span class="text-sky-300">"down"</span> = mundur &nbsp;|&nbsp;
+            <span class="text-sky-300">"left"</span> = kiri &nbsp;|&nbsp;
+            <span class="text-sky-300">"right"</span> = kanan &nbsp;|&nbsp;
+            <span class="text-rose-300">"stop"</span> = berhenti &nbsp;|&nbsp;
+            <span class="text-amber-300">"capit"</span> = tutup capit &nbsp;|&nbsp;
+            <span class="text-amber-300">"lepas"</span> = buka capit
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /**
+     * Tayo The Little Bus — BBC micro:bit Web Bluetooth Controller & Mini-Games
+     */
+
+    // =========================================================================
+    // 1. EFEK SUARA BUS TAYO & KLAKSON TET-TOT (WEB AUDIO API)
+    // =========================================================================
+    let audioCtx = null;
+    let isMuted = false;
+
+    const btnMuteToggle = document.getElementById('btnMuteToggle');
+    btnMuteToggle.addEventListener('click', () => {
+      isMuted = !isMuted;
+      btnMuteToggle.textContent = isMuted ? '🔇 MUTE' : '🔊 SFX';
+    });
+
+    function ensureAudioContext() {
+      if (isMuted) return null;
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // Klakson Khas Bus Kota Tayo ("TET-TOT!")
+    function playBusHorn() {
+      try {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        [0, 0.18].forEach((offset, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(idx === 0 ? 392 : 330, now + offset);
+          gain.gain.setValueAtTime(0.1, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.14);
+        });
+      } catch (e) {}
+    }
+
+    document.getElementById('btnHorn').addEventListener('click', () => {
+      playBusHorn();
+      const speech = document.getElementById('tayoSpeechBubble');
+      speech.textContent = '"TET-TOT! Permisi, Bus Tayo mau lewat!"';
+    });
+
+    function playArcadeSound(cmd) {
+      try {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (cmd === 'capit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(500, now);
+          osc.frequency.exponentialRampToValueAtTime(220, now + 0.14);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } else if (cmd === 'lepas') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(290, now);
+          osc.frequency.exponentialRampToValueAtTime(620, now + 0.14);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } else if (cmd === 'coin') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(780, now);
+          osc.frequency.setValueAtTime(1040, now + 0.06);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else {
+          const freqMap = { up: 480, down: 340, left: 400, right: 440, stop: 250 };
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freqMap[cmd] || 420, now);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 2. PEMILIH KARAKTER ARMADA BUS (TAYO, ROGI, LANI, GANI)
+    // =========================================================================
+    const BUS_THEMES = {
+      tayo: {
+        name: 'Tayo',
+        number: '120',
+        route: '120 • GARASI KOTA',
+        primary: '#0284c7',
+        dark: '#0369a1',
+        body: '#0284c7',
+        stripe: '#ffffff',
+        trim: '#facc15',
+        subtitle: 'Hai! Aku Tayo si Bus Kecil yang ramah! Siap mengantar kargo!',
+        greeting: '"Ayo berangkat! Aku Tayo nomor 120!"'
+      },
+      rogi: {
+        name: 'Rogi',
+        number: '1000',
+        route: '1000 • TAMAN KOTA',
+        primary: '#16a34a',
+        dark: '#15803d',
+        body: '#16a34a',
+        stripe: '#ffffff',
+        trim: '#facc15',
+        subtitle: 'Yo! Aku Rogi si Bus Hijau yang penuh semangat!',
+        greeting: '"Wuuush! Rogi 1000 siap melaju kencang!"'
+      },
+      lani: {
+        name: 'Lani',
+        number: '02',
+        route: '02 • PUSAT KOTA',
+        primary: '#eab308',
+        dark: '#ca8a04',
+        body: '#facc15',
+        stripe: '#ffffff',
+        trim: '#fb7185',
+        subtitle: 'Halo teman-teman! Aku Lani si Bus Kuning yang ceria!',
+        greeting: '"Hati-hati di jalan ya! Lani 02 siap bertugas!"'
+      },
+      gani: {
+        name: 'Gani',
+        number: '1339',
+        route: '1339 • TERMINAL BARAT',
+        primary: '#dc2626',
+        dark: '#b91c1c',
+        body: '#dc2626',
+        stripe: '#ffffff',
+        trim: '#facc15',
+        subtitle: 'Aku Gani si Bus Merah yang rajin dan pekerja keras!',
+        greeting: '"Gani 1339 siap mengangkut kargo berat!"'
+      }
+    };
+
+    let currentBusKey = 'tayo';
+
+    function applyBusTheme(key) {
+      const theme = BUS_THEMES[key] || BUS_THEMES.tayo;
+      currentBusKey = key;
+
+      document.documentElement.style.setProperty('--bus-primary', theme.primary);
+      document.documentElement.style.setProperty('--bus-dark', theme.dark);
+
+      document.getElementById('busBadgeNumber').textContent = theme.number;
+      document.getElementById('busSubtitle').textContent = theme.subtitle;
+      document.getElementById('tayoSpeechBubble').textContent = theme.greeting;
+
+      document.getElementById('svgBusBody').setAttribute('fill', theme.body);
+      document.getElementById('svgBusStripe').setAttribute('fill', theme.stripe);
+      document.getElementById('svgBusTrim').setAttribute('fill', theme.trim);
+      document.getElementById('svgBusRouteText').textContent = theme.route;
+      document.getElementById('svgBusFrontNumber').textContent = theme.number;
+
+      document.querySelectorAll('.bus-select-btn').forEach((btn) => {
+        if (btn.getAttribute('data-bus') === key) {
+          btn.classList.add('ring-2', 'ring-yellow-300', 'scale-105');
+        } else {
+          btn.classList.remove('ring-2', 'ring-yellow-300', 'scale-105');
+        }
+      });
+    }
+
+    document.querySelectorAll('.bus-select-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyBusTheme(btn.getAttribute('data-bus'));
+        playBusHorn();
+      });
+    });
+
+    // =========================================================================
+    // 3. KONEKSI BLUETOOTH BBC MICRO:BIT UART SERVICE (100% COMPATIBLE)
+    // =========================================================================
+    const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const UART_TX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+    const UART_RX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+    let bleDevice = null;
+    let bleWriteCharacteristic = null;
+    let isConnected = false;
+    let writeQueue = Promise.resolve();
+
+    const bleDot = document.getElementById('bleDot');
+    const bleStatusLabel = document.getElementById('bleStatusLabel');
+    const btnConnectText = document.getElementById('btnConnectText');
+    const bleHelperMsg = document.getElementById('bleHelperMsg');
+    const txMonitorText = document.getElementById('txMonitorText');
+    const lastCmdPill = document.getElementById('lastCmdPill');
+    const clawStateBadge = document.getElementById('clawStateBadge');
+
+    function updateBleUI(status, deviceName = '') {
+      if (status === 'connected') {
+        isConnected = true;
+        bleDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]';
+        bleStatusLabel.textContent = `Terhubung: ${deviceName || 'BBC micro:bit'}`;
+        bleStatusLabel.className = 'text-xs sm:text-sm font-bold text-emerald-300';
+        btnConnectText.textContent = 'DISCONNECT';
+        bleHelperMsg.textContent = 'Bluetooth UART aktif — perintah langsung dikirim ke micro:bit.';
+      } else if (status === 'connecting') {
+        bleDot.className = 'w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping';
+        bleStatusLabel.textContent = 'Menghubungkan ke micro:bit...';
+        bleStatusLabel.className = 'text-xs sm:text-sm font-bold text-sky-300';
+        btnConnectText.textContent = 'CONNECTING...';
+      } else {
+        isConnected = false;
+        bleWriteCharacteristic = null;
+        bleDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+        bleStatusLabel.textContent = 'Mode Simulasi (Belum Terhubung)';
+        bleStatusLabel.className = 'text-xs sm:text-sm font-bold text-amber-300';
+        btnConnectText.textContent = 'CONNECT MICRO:BIT';
+        bleHelperMsg.innerHTML =
+          'Klik <strong class="text-emerald-300">CONNECT MICRO:BIT</strong> untuk menghubungkan bus via Web Bluetooth UART, atau mainkan 3 mini-games Tayo secara langsung!';
+      }
+    }
+
+    async function toggleBluetoothConnection() {
+      if (isConnected && bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+        updateBleUI('disconnected');
+        return;
+      }
+
+      if (!navigator.bluetooth) {
+        bleHelperMsg.textContent = 'Browser ini tidak mendukung Web Bluetooth. Gunakan Google Chrome atau Microsoft Edge.';
+        return;
+      }
+
+      try {
+        updateBleUI('connecting');
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'BBC micro:bit' }],
+          optionalServices: [UART_SERVICE_UUID]
+        });
+
+        bleDevice.addEventListener('gattserverdisconnected', () => {
+          updateBleUI('disconnected');
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(UART_SERVICE_UUID);
+        const characteristics = await service.getCharacteristics();
+
+        bleWriteCharacteristic =
+          characteristics.find((c) => c.uuid === UART_TX_UUID && (c.properties.write || c.properties.writeWithoutResponse)) ||
+          characteristics.find((c) => c.uuid === UART_RX_UUID && (c.properties.write || c.properties.writeWithoutResponse)) ||
+          characteristics.find((c) => c.properties.write || c.properties.writeWithoutResponse) ||
+          null;
+
+        if (!bleWriteCharacteristic) {
+          throw new Error('Karakteristik tulis UART tidak ditemukan.');
+        }
+
+        updateBleUI('connected', bleDevice.name);
+        sendCommand('stop');
+      } catch (err) {
+        updateBleUI('disconnected');
+        if (err && err.name !== 'NotFoundError') {
+          bleHelperMsg.textContent = `Gagal menghubungkan: ${err.message}`;
+        }
+      }
+    }
+
+    document.getElementById('btnConnectBle').addEventListener('click', toggleBluetoothConnection);
+
+    const makecodeDrawer = document.getElementById('makecodeDrawer');
+    document.getElementById('btnToggleHint').addEventListener('click', () => {
+      makecodeDrawer.classList.toggle('hidden');
+    });
+
+    // =========================================================================
+    // 4. PENGIRIMAN PERINTAH UART & ANIMASI KOKPIT TAYO + INTEGRASI MINI-GAMES
+    // =========================================================================
+    let activeDirectionalCmd = null;
+    let currentViewMode = 'cockpit';
+
+    function updateCockpitVisuals(cmd) {
+      const busWrapper = document.getElementById('busCharacterWrapper');
+      const wheelL = document.getElementById('svgWheelLeft');
+      const wheelR = document.getElementById('svgWheelRight');
+      const pupilL = document.getElementById('svgPupilLeft');
+      const pupilR = document.getElementById('svgPupilRight');
+      const speedVal = document.getElementById('speedometerValue');
+      const speedBar = document.getElementById('speedBarFill');
+      const actionBadge = document.getElementById('cockpitActionBadge');
+      const speech = document.getElementById('tayoSpeechBubble');
+      const roadStripes = document.getElementById('bgRoadStripes');
+      const clawLeftArm = document.getElementById('svgClawLeftArm');
+      const clawRightArm = document.getElementById('svgClawRightArm');
+      const windshieldClawStatus = document.getElementById('windshieldClawStatus');
+
+      if (cmd === 'up') {
+        busWrapper.className = 'bus-driving-bounce w-64 sm:w-80 transition-transform duration-200 scale-105';
+        wheelL.classList.add('wheel-spinning');
+        wheelR.classList.add('wheel-spinning');
+        roadStripes.classList.add('is-fast');
+        pupilL.setAttribute('cx', '136');
+        pupilR.setAttribute('cx', '224');
+        speedVal.textContent = '65';
+        speedBar.style.width = '88%';
+        actionBadge.textContent = 'MAJU (up)';
+        speech.textContent = '"Maju terus! Jalanan kota cerah sekali!"';
+      } else if (cmd === 'down') {
+        busWrapper.className = 'bus-driving-bounce w-64 sm:w-80 transition-transform duration-200 scale-95';
+        wheelL.classList.add('wheel-spinning');
+        wheelR.classList.add('wheel-spinning');
+        pupilL.setAttribute('cx', '136');
+        pupilR.setAttribute('cx', '224');
+        speedVal.textContent = '25';
+        speedBar.style.width = '38%';
+        actionBadge.textContent = 'MUNDUR (down)';
+        speech.textContent = '"Tin-tin! Hati-hati bus sedang mundur!"';
+      } else if (cmd === 'left') {
+        busWrapper.className = 'bus-driving-bounce w-64 sm:w-80 transition-transform duration-200 -translate-x-4 -rotate-2';
+        wheelL.classList.add('wheel-spinning');
+        wheelR.classList.add('wheel-spinning');
+        pupilL.setAttribute('cx', '131');
+        pupilR.setAttribute('cx', '219');
+        speedVal.textContent = '45';
+        speedBar.style.width = '62%';
+        actionBadge.textContent = 'BELOK KIRI (left)';
+        speech.textContent = '"Belok ke kiri menuju halte berikutnya!"';
+      } else if (cmd === 'right') {
+        busWrapper.className = 'bus-driving-bounce w-64 sm:w-80 transition-transform duration-200 translate-x-4 rotate-2';
+        wheelL.classList.add('wheel-spinning');
+        wheelR.classList.add('wheel-spinning');
+        pupilL.setAttribute('cx', '142');
+        pupilR.setAttribute('cx', '230');
+        speedVal.textContent = '45';
+        speedBar.style.width = '62%';
+        actionBadge.textContent = 'BELOK KANAN (right)';
+        speech.textContent = '"Belok ke kanan dengan aman!"';
+      } else if (cmd === 'stop') {
+        busWrapper.className = 'bus-idle-bounce w-64 sm:w-80 transition-transform duration-200';
+        wheelL.classList.remove('wheel-spinning');
+        wheelR.classList.remove('wheel-spinning');
+        roadStripes.classList.remove('is-fast');
+        pupilL.setAttribute('cx', '138');
+        pupilR.setAttribute('cx', '222');
+        speedVal.textContent = '0';
+        speedBar.style.width = '0%';
+        actionBadge.textContent = 'BERHENTI (stop)';
+      } else if (cmd === 'capit') {
+        clawLeftArm.setAttribute('d', 'M166 20 C162 32, 168 42, 177 43');
+        clawRightArm.setAttribute('d', 'M194 20 C198 32, 192 42, 183 43');
+        windshieldClawStatus.textContent = 'TERTUTUP';
+        windshieldClawStatus.className = 'text-xs font-extrabold text-rose-600';
+        speech.textContent = '"Hap! Paket kargo berhasil dicapit!"';
+      } else if (cmd === 'lepas') {
+        clawLeftArm.setAttribute('d', 'M166 20 C146 24, 144 40, 158 43');
+        clawRightArm.setAttribute('d', 'M194 20 C214 24, 216 40, 202 43');
+        windshieldClawStatus.textContent = 'TERBUKA';
+        windshieldClawStatus.className = 'text-xs font-extrabold text-amber-600';
+        speech.textContent = '"Capit terbuka! Kargo dilepaskan!"';
+      }
+    }
+
+    function sendCommand(cmd) {
+      txMonitorText.textContent = `${cmd}\\n`;
+      lastCmdPill.textContent = cmd;
+      playArcadeSound(cmd);
+
+      if (cmd === 'capit') {
+        clawStateBadge.textContent = 'CAPIT: TERTUTUP';
+        clawStateBadge.className =
+          'px-3 py-1 rounded-full bg-rose-500/25 border border-rose-400/70 text-rose-300 text-xs font-extrabold tracking-wide';
+      } else if (cmd === 'lepas') {
+        clawStateBadge.textContent = 'CAPIT: TERBUKA';
+        clawStateBadge.className =
+          'px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 text-xs font-extrabold tracking-wide';
+      }
+
+      updateCockpitVisuals(cmd);
+
+      // Teruskan perintah ke Mini-Game yang sedang aktif!
+      handleGameCommand(cmd);
+
+      if (isConnected && bleWriteCharacteristic) {
+        const payload = new TextEncoder().encode(`${cmd}\n`);
+        writeQueue = writeQueue
+          .then(() => {
+            if (bleWriteCharacteristic.properties.writeWithoutResponse) {
+              return bleWriteCharacteristic.writeValueWithoutResponse(payload);
+            }
+            return bleWriteCharacteristic.writeValue(payload);
+          })
+          .catch((err) => {
+            console.warn('UART Write Error:', err);
+          });
+      }
+    }
+
+    // =========================================================================
+    // 5. SWITCHER TAB KOKPIT & 3 MINI-GAMES TAYO
+    // =========================================================================
+    const modeViews = {
+      'cockpit': document.getElementById('view-cockpit'),
+      'game-claw': document.getElementById('view-game-claw'),
+      'game-race': document.getElementById('view-game-race'),
+      'game-simon': document.getElementById('view-game-simon')
+    };
+
+    function switchMode(mode) {
+      currentViewMode = mode;
+      Object.entries(modeViews).forEach(([key, el]) => {
+        if (key === mode) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.mode-tab-btn').forEach((btn) => {
+        if (btn.getAttribute('data-mode') === mode) {
+          btn.classList.add('tab-pill-active');
+          btn.classList.remove('text-white/85');
+        } else {
+          btn.classList.remove('tab-pill-active');
+          btn.classList.add('text-white/85');
+        }
+      });
+
+      if (mode === 'game-claw') {
+        resizeClawCanvas();
+        if (!clawGameState.running && clawGameState.timeLeft <= 0) resetClawGame();
+      } else if (mode === 'game-race') {
+        resizeRaceCanvas();
+        if (raceGameState.gameOver) resetRaceGame();
+      }
+    }
+
+    document.querySelectorAll('.mode-tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        switchMode(btn.getAttribute('data-mode'));
+      });
+    });
+
+    // =========================================================================
+    // 6. MINI-GAME 1: TAYO CARGO CLAW (CAPIT PAKET KOTA)
+    // =========================================================================
+    const canvasClaw = document.getElementById('canvasClawGame');
+    const ctxClaw = canvasClaw.getContext('2d');
+
+    const clawGameState = {
+      craneX: 0.5, // 0..1
+      clawDropY: 0, // 0..1
+      clawState: 'idle', // idle | dropping | rising
+      grabbedItem: null,
+      items: [],
+      score: 0,
+      timeLeft: 60,
+      running: true,
+      spawnTimer: 0
+    };
+
+    function resizeClawCanvas() {
+      const rect = canvasClaw.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        canvasClaw.width = rect.width;
+        canvasClaw.height = rect.height;
+      }
+    }
+
+    function resetClawGame() {
+      clawGameState.craneX = 0.5;
+      clawGameState.clawDropY = 0;
+      clawGameState.clawState = 'idle';
+      clawGameState.grabbedItem = null;
+      clawGameState.items = [];
+      clawGameState.score = 0;
+      clawGameState.timeLeft = 60;
+      clawGameState.running = true;
+      document.getElementById('clawScore').textContent = '0';
+      document.getElementById('clawTimer').textContent = '60';
+      document.getElementById('clawGameOverlay').classList.add('hidden');
+      spawnClawItem();
+      spawnClawItem();
+    }
+
+    function spawnClawItem() {
+      const types = [
+        { emoji: '📦', points: 10, color: '#f59e0b' },
+        { emoji: '🎁', points: 20, color: '#ec4899' },
+        { emoji: '⭐', points: 30, color: '#eab308' },
+        { emoji: '🔋', points: 25, color: '#10b981' }
+      ];
+      const pick = types[Math.floor(Math.random() * types.length)];
+      clawGameState.items.push({
+        x: 0.25 + Math.random() * 0.65,
+        vx: (Math.random() > 0.5 ? 1 : -1) * (0.06 + Math.random() * 0.06),
+        ...pick
+      });
+    }
+
+    document.getElementById('btnResetClawGame').addEventListener('click', resetClawGame);
+    document.getElementById('btnPlayAgainClaw').addEventListener('click', resetClawGame);
+
+    setInterval(() => {
+      if (currentViewMode === 'game-claw' && clawGameState.running) {
+        clawGameState.timeLeft--;
+        document.getElementById('clawTimer').textContent = clawGameState.timeLeft;
+        if (clawGameState.timeLeft <= 0) {
+          clawGameState.running = false;
+          document.getElementById('clawFinalScore').textContent = clawGameState.score;
+          document.getElementById('clawGameOverlay').classList.remove('hidden');
+        }
+      }
+    }, 1000);
+
+    function updateAndDrawClawGame(dt) {
+      if (currentViewMode !== 'game-claw') return;
+      const w = canvasClaw.width;
+      const h = canvasClaw.height;
+      if (!w || !h) return;
+
+      // Gerakan horizontal crane mengikuti tombol ditahan
+      if (clawGameState.running) {
+        if (activeDirectionalCmd === 'left') {
+          clawGameState.craneX = Math.max(0.1, clawGameState.craneX - 0.55 * dt);
+        } else if (activeDirectionalCmd === 'right') {
+          clawGameState.craneX = Math.min(0.92, clawGameState.craneX + 0.55 * dt);
+        }
+
+        // Animasi turun-naik capit
+        if (clawGameState.clawState === 'dropping') {
+          clawGameState.clawDropY += 1.9 * dt;
+          if (clawGameState.clawDropY >= 1) {
+            clawGameState.clawDropY = 1;
+            // Cek tangkapan paket di lantai ban berjalan
+            if (!clawGameState.grabbedItem) {
+              const hitIdx = clawGameState.items.findIndex((it) => Math.abs(it.x - clawGameState.craneX) < 0.08);
+              if (hitIdx !== -1) {
+                clawGameState.grabbedItem = clawGameState.items.splice(hitIdx, 1)[0];
+                playArcadeSound('coin');
+              }
+            }
+            clawGameState.clawState = 'rising';
+          }
+        } else if (clawGameState.clawState === 'rising') {
+          clawGameState.clawDropY -= 1.8 * dt;
+          if (clawGameState.clawDropY <= 0) {
+            clawGameState.clawDropY = 0;
+            clawGameState.clawState = 'idle';
+          }
+        }
+
+        // Gerak item di ban berjalan
+        clawGameState.spawnTimer += dt;
+        if (clawGameState.spawnTimer > 2.6 && clawGameState.items.length < 4) {
+          clawGameState.spawnTimer = 0;
+          spawnClawItem();
+        }
+
+        clawGameState.items.forEach((it) => {
+          it.x += it.vx * dt;
+          if (it.x < 0.24) { it.x = 0.24; it.vx *= -1; }
+          if (it.x > 0.92) { it.x = 0.92; it.vx *= -1; }
+        });
+      }
+
+      // Gambar Latar
+      ctxClaw.clearRect(0, 0, w, h);
+      ctxClaw.fillStyle = '#e0f2fe';
+      ctxClaw.fillRect(0, 0, w, h);
+
+      // Rel Atas Crane
+      ctxClaw.fillStyle = '#334155';
+      ctxClaw.fillRect(0, 14, w, 10);
+
+      // Zona Drop Truk Kargo di Kiri
+      const dropZoneW = w * 0.19;
+      ctxClaw.fillStyle = '#dcfce7';
+      ctxClaw.fillRect(0, h - 58, dropZoneW, 58);
+      ctxClaw.strokeStyle = '#16a34a';
+      ctxClaw.lineWidth = 3;
+      ctxClaw.strokeRect(2, h - 56, dropZoneW - 4, 54);
+      ctxClaw.fillStyle = '#15803d';
+      ctxClaw.font = 'bold 11px Fredoka, sans-serif';
+      ctxClaw.textAlign = 'center';
+      ctxClaw.fillText('ZONA DROP', dropZoneW / 2, h - 34);
+      ctxClaw.fillText('(TEKAN LEPAS)', dropZoneW / 2, h - 18);
+
+      // Ban Berjalan Kota
+      ctxClaw.fillStyle = '#475569';
+      ctxClaw.fillRect(dropZoneW, h - 24, w - dropZoneW, 24);
+
+      // Gambar Paket di Ban Berjalan
+      ctxClaw.font = '28px sans-serif';
+      ctxClaw.textAlign = 'center';
+      clawGameState.items.forEach((it) => {
+        ctxClaw.fillText(it.emoji, it.x * w, h - 30);
+      });
+
+      // Gambar Crane Bus Tayo & Tali Capit
+      const cx = clawGameState.craneX * w;
+      const topY = 24;
+      const maxDrop = h - 72;
+      const clawY = topY + 24 + clawGameState.clawDropY * (maxDrop - topY - 24);
+
+      // Tali baja
+      ctxClaw.strokeStyle = '#0f172a';
+      ctxClaw.lineWidth = 4;
+      ctxClaw.beginPath();
+      ctxClaw.moveTo(cx, topY);
+      ctxClaw.lineTo(cx, clawY);
+      ctxClaw.stroke();
+
+      // Kepala Crane Mini Tayo
+      ctxClaw.fillStyle = BUS_THEMES[currentBusKey].body;
+      ctxClaw.beginPath();
+      ctxClaw.roundRect(cx - 22, 6, 44, 24, 8);
+      ctxClaw.fill();
+      ctxClaw.strokeStyle = '#0f172a';
+      ctxClaw.lineWidth = 2.5;
+      ctxClaw.stroke();
+
+      // Capit Kiri & Kanan
+      ctxClaw.strokeStyle = '#f59e0b';
+      ctxClaw.lineWidth = 5;
+      ctxClaw.beginPath();
+      if (clawGameState.grabbedItem || clawGameState.clawState === 'rising') {
+        ctxClaw.moveTo(cx, clawY);
+        ctxClaw.lineTo(cx - 10, clawY + 18);
+        ctxClaw.moveTo(cx, clawY);
+        ctxClaw.lineTo(cx + 10, clawY + 18);
+      } else {
+        ctxClaw.moveTo(cx, clawY);
+        ctxClaw.lineTo(cx - 18, clawY + 16);
+        ctxClaw.moveTo(cx, clawY);
+        ctxClaw.lineTo(cx + 18, clawY + 16);
+      }
+      ctxClaw.stroke();
+
+      // Gambar Paket yang Sedang Dicapit
+      if (clawGameState.grabbedItem) {
+        ctxClaw.font = '28px sans-serif';
+        ctxClaw.fillText(clawGameState.grabbedItem.emoji, cx, clawY + 34);
+      }
+    }
+
+    // =========================================================================
+    // 7. MINI-GAME 2: TAYO CITY RUSH (BALAP 3 JALUR)
+    // =========================================================================
+    const canvasRace = document.getElementById('canvasRaceGame');
+    const ctxRace = canvasRace.getContext('2d');
+
+    const raceGameState = {
+      lane: 1, // 0 = Kiri, 1 = Tengah, 2 = Kanan
+      score: 0,
+      lives: 3,
+      obstacles: [], // { lane, y, type: 'cone' | 'star' }
+      spawnTimer: 0,
+      roadOffset: 0,
+      gameOver: false
+    };
+
+    function resizeRaceCanvas() {
+      const rect = canvasRace.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        canvasRace.width = rect.width;
+        canvasRace.height = rect.height;
+      }
+    }
+
+    function resetRaceGame() {
+      raceGameState.lane = 1;
+      raceGameState.score = 0;
+      raceGameState.lives = 3;
+      raceGameState.obstacles = [];
+      raceGameState.spawnTimer = 0;
+      raceGameState.gameOver = false;
+      document.getElementById('raceScore').textContent = '0';
+      document.getElementById('raceLives').textContent = '❤️❤️❤️';
+      document.getElementById('raceGameOverlay').classList.add('hidden');
+    }
+
+    document.getElementById('btnResetRaceGame').addEventListener('click', resetRaceGame);
+    document.getElementById('btnPlayAgainRace').addEventListener('click', resetRaceGame);
+
+    function updateAndDrawRaceGame(dt) {
+      if (currentViewMode !== 'game-race') return;
+      const w = canvasRace.width;
+      const h = canvasRace.height;
+      if (!w || !h) return;
+
+      const turbo = activeDirectionalCmd === 'up' ? 1.85 : 1.0;
+      const baseSpeed = (180 + Math.min(200, raceGameState.score * 1.5)) * turbo;
+
+      if (!raceGameState.gameOver) {
+        raceGameState.roadOffset = (raceGameState.roadOffset + baseSpeed * dt) % 48;
+        raceGameState.spawnTimer += dt * turbo;
+
+        if (raceGameState.spawnTimer > 0.85) {
+          raceGameState.spawnTimer = 0;
+          const randomLane = Math.floor(Math.random() * 3);
+          const isStar = Math.random() > 0.45;
+          raceGameState.obstacles.push({
+            lane: randomLane,
+            y: -30,
+            type: isStar ? 'star' : 'cone'
+          });
+        }
+
+        const playerY = h - 46;
+        for (let i = raceGameState.obstacles.length - 1; i >= 0; i--) {
+          const ob = raceGameState.obstacles[i];
+          ob.y += baseSpeed * dt;
+
+          // Deteksi tabrakan
+          if (ob.lane === raceGameState.lane && Math.abs(ob.y - playerY) < 30) {
+            if (ob.type === 'star') {
+              raceGameState.score += 10;
+              document.getElementById('raceScore').textContent = raceGameState.score;
+              playArcadeSound('coin');
+            } else {
+              raceGameState.lives--;
+              document.getElementById('raceLives').textContent = '❤️'.repeat(Math.max(0, raceGameState.lives)) || '💔';
+              playArcadeSound('stop');
+              if (raceGameState.lives <= 0) {
+                raceGameState.gameOver = true;
+                document.getElementById('raceFinalScore').textContent = raceGameState.score;
+                document.getElementById('raceGameOverlay').classList.remove('hidden');
+              }
+            }
+            raceGameState.obstacles.splice(i, 1);
+            continue;
+          }
+
+          if (ob.y > h + 40) {
+            if (ob.type === 'cone') {
+              raceGameState.score += 2;
+              document.getElementById('raceScore').textContent = raceGameState.score;
+            }
+            raceGameState.obstacles.splice(i, 1);
+          }
+        }
+      }
+
+      // Gambar Jalan Raya 3 Jalur
+      ctxRace.clearRect(0, 0, w, h);
+      ctxRace.fillStyle = '#16a34a';
+      ctxRace.fillRect(0, 0, w, h);
+
+      const roadMargin = w * 0.16;
+      const roadW = w - roadMargin * 2;
+      ctxRace.fillStyle = '#334155';
+      ctxRace.fillRect(roadMargin, 0, roadW, h);
+
+      // Garis pembatas jalur
+      ctxRace.strokeStyle = '#f8fafc';
+      ctxRace.lineWidth = 3;
+      ctxRace.setLineDash([24, 24]);
+      ctxRace.lineDashOffset = -raceGameState.roadOffset;
+
+      [1, 2].forEach((divider) => {
+        const lx = roadMargin + (roadW / 3) * divider;
+        ctxRace.beginPath();
+        ctxRace.moveTo(lx, 0);
+        ctxRace.lineTo(lx, h);
+        ctxRace.stroke();
+      });
+      ctxRace.setLineDash([]);
+
+      const laneCenters = [
+        roadMargin + roadW * (1 / 6),
+        roadMargin + roadW * (3 / 6),
+        roadMargin + roadW * (5 / 6)
+      ];
+
+      // Gambar Item & Rintangan
+      ctxRace.font = '26px sans-serif';
+      ctxRace.textAlign = 'center';
+      raceGameState.obstacles.forEach((ob) => {
+        ctxRace.fillText(ob.type === 'star' ? '⭐' : '🚧', laneCenters[ob.lane], ob.y);
+      });
+
+      // Gambar Bus Tayo Pemain dari Atas
+      const px = laneCenters[raceGameState.lane];
+      const py = h - 46;
+      ctxRace.fillStyle = BUS_THEMES[currentBusKey].body;
+      ctxRace.beginPath();
+      ctxRace.roundRect(px - 20, py - 28, 40, 56, 10);
+      ctxRace.fill();
+      ctxRace.strokeStyle = '#0f172a';
+      ctxRace.lineWidth = 3;
+      ctxRace.stroke();
+
+      // Kaca depan & nomor atap bus
+      ctxRace.fillStyle = '#bae6fd';
+      ctxRace.fillRect(px - 15, py - 22, 30, 12);
+      ctxRace.fillStyle = '#ffffff';
+      ctxRace.font = 'bold 11px Baloo 2, sans-serif';
+      ctxRace.fillText(BUS_THEMES[currentBusKey].number, px, py + 10);
+    }
+
+    // =========================================================================
+    // 8. MINI-GAME 3: TANTANGAN RAMBU MEKANIK HANA (MEMORY SIMON)
+    // =========================================================================
+    const SIMON_COMMANDS = [
+      { cmd: 'up', label: 'MAJU', icon: '⬆️', color: 'bg-sky-500 border-sky-200' },
+      { cmd: 'left', label: 'KIRI', icon: '⬅️', color: 'bg-indigo-500 border-indigo-200' },
+      { cmd: 'right', label: 'KANAN', icon: '➡️', color: 'bg-emerald-500 border-emerald-200' },
+      { cmd: 'down', label: 'MUNDUR', icon: '⬇️', color: 'bg-cyan-600 border-cyan-200' },
+      { cmd: 'capit', label: 'CAPIT', icon: '✊', color: 'bg-rose-500 border-rose-200' },
+      { cmd: 'lepas', label: 'LEPAS', icon: '🖐️', color: 'bg-amber-500 border-amber-200 text-slate-950' }
+    ];
+
+    const simonState = {
+      sequence: [],
+      playerIndex: 0,
+      isShowing: false,
+      active: false,
+      level: 1
+    };
+
+    function renderSimonDots() {
+      const container = document.getElementById('simonProgressDots');
+      container.innerHTML = '';
+      simonState.sequence.forEach((_, idx) => {
+        const dot = document.createElement('span');
+        dot.className =
+          idx < simonState.playerIndex
+            ? 'w-3.5 h-3.5 rounded-full bg-emerald-400 border border-white'
+            : 'w-3.5 h-3.5 rounded-full bg-slate-600 border border-slate-400';
+        container.appendChild(dot);
+      });
+    }
+
+    async function playSimonSequence() {
+      simonState.isShowing = true;
+      simonState.playerIndex = 0;
+      renderSimonDots();
+
+      const prompt = document.getElementById('simonPromptText');
+      const display = document.getElementById('simonSignalDisplay');
+      prompt.textContent = `Perhatikan urutan sinyal dari Mekanik Hana (Level ${simonState.level})...`;
+
+      for (let i = 0; i < simonState.sequence.length; i++) {
+        await new Promise((r) => setTimeout(r, 420));
+        const item = simonState.sequence[i];
+        playArcadeSound(item.cmd);
+        display.innerHTML = `
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl ${item.color} border-4 flex flex-col items-center justify-center shadow-lg scale-110 transition-transform">
+            <span class="text-4xl">${item.icon}</span>
+            <span class="text-xs font-extrabold mt-1">${item.label}</span>
+          </div>
+        `;
+        await new Promise((r) => setTimeout(r, 520));
+        display.innerHTML = `
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-slate-800 border-4 border-slate-600 flex flex-col items-center justify-center">
+            <span class="text-2xl text-slate-400">•••</span>
+          </div>
+        `;
+      }
+
+      simonState.isShowing = false;
+      prompt.textContent = 'Giliranmu! Tekan tombol D-Pad / Capit sesuai urutan tadi!';
+    }
+
+    function startSimonGame() {
+      simonState.level = 1;
+      simonState.sequence = [];
+      simonState.active = true;
+      document.getElementById('simonLevel').textContent = '1';
+      nextSimonRound();
+    }
+
+    function nextSimonRound() {
+      const randomCmd = SIMON_COMMANDS[Math.floor(Math.random() * SIMON_COMMANDS.length)];
+      simonState.sequence.push(randomCmd);
+      playSimonSequence();
+    }
+
+    document.getElementById('btnStartSimon').addEventListener('click', startSimonGame);
+
+    // =========================================================================
+    // 9. PENGHUBUNG PERINTAH CONTROLLER KE MINI-GAMES
+    // =========================================================================
+    function handleGameCommand(cmd) {
+      // Mini-Game 1: Tayo Cargo Claw
+      if (currentViewMode === 'game-claw' && clawGameState.running) {
+        if (cmd === 'capit' && clawGameState.clawState === 'idle') {
+          clawGameState.clawState = 'dropping';
+        } else if (cmd === 'lepas' && clawGameState.grabbedItem) {
+          if (clawGameState.craneX <= 0.22) {
+            clawGameState.score += clawGameState.grabbedItem.points;
+            document.getElementById('clawScore').textContent = clawGameState.score;
+            playArcadeSound('coin');
+          }
+          clawGameState.grabbedItem = null;
+        }
+      }
+
+      // Mini-Game 2: Tayo City Rush
+      if (currentViewMode === 'game-race' && !raceGameState.gameOver) {
+        if (cmd === 'left') {
+          raceGameState.lane = Math.max(0, raceGameState.lane - 1);
+        } else if (cmd === 'right') {
+          raceGameState.lane = Math.min(2, raceGameState.lane + 1);
+        }
+      }
+
+      // Mini-Game 3: Rambu Hana (Simon)
+      if (currentViewMode === 'game-simon' && simonState.active && !simonState.isShowing && cmd !== 'stop') {
+        const expected = simonState.sequence[simonState.playerIndex];
+        const display = document.getElementById('simonSignalDisplay');
+        const prompt = document.getElementById('simonPromptText');
+
+        if (expected && cmd === expected.cmd) {
+          simonState.playerIndex++;
+          renderSimonDots();
+          display.innerHTML = `
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl ${expected.color} border-4 flex flex-col items-center justify-center shadow-lg">
+              <span class="text-4xl">${expected.icon}</span>
+              <span class="text-xs font-extrabold mt-1">BENAR!</span>
+            </div>
+          `;
+
+          if (simonState.playerIndex >= simonState.sequence.length) {
+            simonState.level++;
+            document.getElementById('simonLevel').textContent = simonState.level;
+            playArcadeSound('coin');
+            prompt.textContent = 'Hebat! Bus diperbaiki! Bersiap ke level berikutnya...';
+            simonState.isShowing = true;
+            setTimeout(nextSimonRound, 900);
+          }
+        } else {
+          simonState.active = false;
+          playBusHorn();
+          prompt.textContent = `Ups! Sinyal kurang tepat (seharusnya ${expected?.label}). Klik Mulai Urutan lagi!`;
+          display.innerHTML = `
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-rose-600 border-4 border-rose-200 flex flex-col items-center justify-center">
+              <span class="text-3xl">❌</span>
+              <span class="text-xs font-extrabold mt-1">COBA LAGI</span>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Loop Animasi Canvas Mini-Games (60 FPS)
+    let lastFrameTime = performance.now();
+    function gameAnimationLoop(now) {
+      const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+
+      updateAndDrawClawGame(dt);
+      updateAndDrawRaceGame(dt);
+
+      requestAnimationFrame(gameAnimationLoop);
+    }
+    requestAnimationFrame(gameAnimationLoop);
+
+    window.addEventListener('resize', () => {
+      if (currentViewMode === 'game-claw') resizeClawCanvas();
+      if (currentViewMode === 'game-race') resizeRaceCanvas();
+    });
+
+    // =========================================================================
+    // 10. INTERAKSI TOMBOL LAYAR (MOUSE & TOUCH) + KEYBOARD (WASD / ARROWS / E / R)
+    // =========================================================================
+    document.querySelectorAll('[data-cmd]').forEach((btn) => {
+      const cmd = btn.getAttribute('data-cmd');
+
+      const handlePress = (e) => {
+        e.preventDefault();
+        btn.classList.add('is-pressed');
+        if (cmd === 'stop') {
+          activeDirectionalCmd = null;
+          sendCommand('stop');
+        } else if (activeDirectionalCmd !== cmd) {
+          activeDirectionalCmd = cmd;
+          sendCommand(cmd);
+        }
+      };
+
+      const handleRelease = (e) => {
+        if (e) e.preventDefault();
+        if (!btn.classList.contains('is-pressed')) return;
+        btn.classList.remove('is-pressed');
+        if (cmd !== 'stop' && activeDirectionalCmd === cmd) {
+          activeDirectionalCmd = null;
+          sendCommand('stop');
+        }
+      };
+
+      btn.addEventListener('pointerdown', handlePress);
+      btn.addEventListener('pointerup', handleRelease);
+      btn.addEventListener('pointerleave', handleRelease);
+      btn.addEventListener('pointercancel', handleRelease);
+    });
+
+    document.querySelectorAll('[data-action]').forEach((btn) => {
+      const action = btn.getAttribute('data-action');
+
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        btn.classList.add('is-pressed');
+        sendCommand(action);
+      });
+
+      const releaseAction = () => btn.classList.remove('is-pressed');
+      btn.addEventListener('pointerup', releaseAction);
+      btn.addEventListener('pointerleave', releaseAction);
+      btn.addEventListener('pointercancel', releaseAction);
+    });
+
+    const directionKeyMap = {
+      ArrowUp: 'up',
+      KeyW: 'up',
+      ArrowDown: 'down',
+      KeyS: 'down',
+      ArrowLeft: 'left',
+      KeyA: 'left',
+      ArrowRight: 'right',
+      KeyD: 'right'
+    };
+
+    const heldKeys = new Set();
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+
+      if (directionKeyMap[e.code]) {
+        e.preventDefault();
+        const cmd = directionKeyMap[e.code];
+        heldKeys.add(e.code);
+        document.getElementById(`btn-${cmd}`)?.classList.add('is-pressed');
+
+        if (activeDirectionalCmd !== cmd) {
+          activeDirectionalCmd = cmd;
+          sendCommand(cmd);
+        }
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        heldKeys.clear();
+        activeDirectionalCmd = null;
+        document.getElementById('btn-stop')?.classList.add('is-pressed');
+        sendCommand('stop');
+        return;
+      }
+
+      if (e.code === 'KeyE') {
+        e.preventDefault();
+        document.getElementById('btn-capit')?.classList.add('is-pressed');
+        sendCommand('capit');
+        return;
+      }
+
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        document.getElementById('btn-lepas')?.classList.add('is-pressed');
+        sendCommand('lepas');
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (directionKeyMap[e.code]) {
+        const cmd = directionKeyMap[e.code];
+        heldKeys.delete(e.code);
+
+        const stillSameDirection = Array.from(heldKeys).some((code) => directionKeyMap[code] === cmd);
+        if (!stillSameDirection) {
+          document.getElementById(`btn-${cmd}`)?.classList.remove('is-pressed');
+        }
+
+        if (heldKeys.size === 0) {
+          if (activeDirectionalCmd !== null) {
+            activeDirectionalCmd = null;
+            sendCommand('stop');
+          }
+        } else {
+          const lastHeld = Array.from(heldKeys).pop();
+          const nextCmd = directionKeyMap[lastHeld];
+          if (nextCmd && nextCmd !== activeDirectionalCmd) {
+            activeDirectionalCmd = nextCmd;
+            sendCommand(nextCmd);
+          }
+        }
+        return;
+      }
+
+      if (e.code === 'Space') {
+        document.getElementById('btn-stop')?.classList.remove('is-pressed');
+      } else if (e.code === 'KeyE') {
+        document.getElementById('btn-capit')?.classList.remove('is-pressed');
+      } else if (e.code === 'KeyR') {
+        document.getElementById('btn-lepas')?.classList.remove('is-pressed');
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (heldKeys.size > 0 || activeDirectionalCmd !== null) {
+        heldKeys.clear();
+        activeDirectionalCmd = null;
+        document.querySelectorAll('.is-pressed').forEach((el) => el.classList.remove('is-pressed'));
+        sendCommand('stop');
+      }
+    });
+
+    // Inisialisasi awal tema Tayo 120
+    applyBusTheme('tayo');
+  </script>
+</body>
+</html>
